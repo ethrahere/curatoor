@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useAccount } from 'wagmi';
+import { sdk } from '@farcaster/miniapp-sdk';
 import type { Recommendation, User } from '../types';
 import { useApp } from '../context/AppContext';
 import { useDefaultTipAmount } from '../hooks/useDefaultTipAmount';
@@ -100,6 +101,20 @@ export function RecommendationCard({ recommendation, onCuratorClick }: Recommend
       setTipFeedback(null);
     }, 2500);
   };
+  const handleShare = async () => {
+    try {
+      const shareUrl = new URL('https://warpcast.com/~/compose');
+      shareUrl.searchParams.set('text', `${recommendation.songTitle} by ${recommendation.artist}`);
+      shareUrl.searchParams.append('embeds[]', recommendation.musicUrl);
+
+      await sdk.actions.openUrl({ url: shareUrl.toString() });
+      setTipFeedback({ type: 'success', message: 'Share composer opened.' });
+    } catch (error) {
+      console.error('Share failed:', error);
+      setTipFeedback({ type: 'error', message: 'Share failed.' });
+    }
+  };
+
 
   const displayName = curator?.farcasterUsername
     ? `@${curator.farcasterUsername}`
@@ -162,15 +177,24 @@ export function RecommendationCard({ recommendation, onCuratorClick }: Recommend
         </div>
 
         <div className="flex flex-col gap-3 border-t border-[rgba(17,17,17,0.25)] pt-4">
-          <div className="flex items-center justify-between gap-3">
-            <a
-              href={recommendation.musicUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-ghost px-6 py-2 text-sm"
-            >
-              Listen
-            </a>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <a
+                href={recommendation.musicUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-ghost px-5 py-2 text-sm"
+              >
+                Listen
+              </a>
+              <button
+                type="button"
+                onClick={handleShare}
+                className="btn-ghost px-5 py-2 text-sm"
+              >
+                Share
+              </button>
+            </div>
             <div className="flex items-center gap-4">
               <span className="text-sm text-ink-soft">
                 Tips

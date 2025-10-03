@@ -1,4 +1,9 @@
 {
+        "accountAssociation": {
+          "header": "eyJmaWQiOjEwMDEzMTMsInR5cGUiOiJhdXRoIiwia2V5IjoiMHgxYzA3QTI1NjcyZTkwODM2QzhENGJkOTQzZmY2ZDIwNkJFNTc5OEYzIn0",
+          "payload": "eyJkb21haW4iOiJjdXJpby1ldGEtc2l4LnZlcmNlbC5hcHAifQ",
+          "signature": "O0Kuufttlr9gUh+YHi8/OF1TwUljWmFZtMKFRKQQ1QVPj3uo9+TvBMSlN0B6QLfP4rai/qE7f+6dPQedmZPMYBw="
+        },
     "miniapp": {
       "version": "1",
       "name": "curio",
@@ -19,5 +24,8 @@
     "ogTitle": "Rewarding curation",
     "ogDescription": "Curate and earn rewards",
     "ogImageUrl": "https://curio-eta-six.vercel.app/curio.png"
+    },
+    "baseBuilder": {
+      "allowedAddresses": ["0xB435c073fB086C03D48F4C36b31d32BEe94cC0d1"]
     }
   }
