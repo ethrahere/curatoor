@@ -7,6 +7,9 @@ import { sdk } from '@farcaster/miniapp-sdk';
 import type { Recommendation, User } from '../types';
 import { useApp } from '../context/AppContext';
 import { useDefaultTipAmount } from '../hooks/useDefaultTipAmount';
+import { useFarcasterAuth, type FarcasterAuthUser } from '../hooks/useFarcasterAuth';
+
+const signerStatusCache = new Map<string, boolean>();
 
 interface RecommendationCardProps {
   recommendation: Recommendation;
@@ -22,6 +25,8 @@ export function RecommendationCard({ recommendation, onCuratorClick }: Recommend
   const [isTipping, setIsTipping] = useState(false);
   const [tipFeedback, setTipFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
+  const { user: farcasterAuthUser, isAuthenticated, login, isLoading: farcasterAuthLoading } = useFarcasterAuth();
 
   useEffect(() => {
     const fetchCurator = async () => {
@@ -33,8 +38,8 @@ export function RecommendationCard({ recommendation, onCuratorClick }: Recommend
       }
 
       try {
-        const user = await getUserOrCreate(recommendation.curatorAddress);
-        setCurator(user);
+        const fetchedUser = await getUserOrCreate(recommendation.curatorAddress);
+        setCurator(fetchedUser);
       } catch (error) {
         console.error('Error fetching curator:', error);
         setCurator(null);
@@ -101,17 +106,144 @@ export function RecommendationCard({ recommendation, onCuratorClick }: Recommend
       setTipFeedback(null);
     }, 2500);
   };
-  const handleShare = async () => {
-    try {
-      const shareUrl = new URL('https://warpcast.com/~/compose');
-      shareUrl.searchParams.set('text', `${recommendation.songTitle} by ${recommendation.artist}`);
-      shareUrl.searchParams.append('embeds[]', recommendation.musicUrl);
+  const ensureSignerReady = async (farcasterUser: FarcasterAuthUser | null) => {
+    if (!farcasterUser?.fid) {
+      throw new Error('Farcaster fid unavailable. Please relogin in Warpcast.');
+    }
 
-      await sdk.actions.openUrl({ url: shareUrl.toString() });
-      setTipFeedback({ type: 'success', message: 'Share composer opened.' });
+    const addressToUse = farcasterUser.address;
+    const cacheKey = addressToUse.toLowerCase();
+
+    if (signerStatusCache.get(cacheKey)) {
+      return;
+    }
+
+    const statusResponse = await fetch(`/api/signer/status?address=${encodeURIComponent(addressToUse)}`);
+
+    if (statusResponse.ok) {
+      const statusBody = await statusResponse.json().catch(() => null);
+      if (statusBody?.confirmed) {
+        signerStatusCache.set(cacheKey, true);
+        return;
+      }
+    } else if (statusResponse.status !== 404) {
+      const statusBody = await statusResponse.json().catch(() => null);
+      const statusMessage = statusBody?.message ?? 'Failed to check signer status.';
+      throw new Error(statusMessage);
+    }
+
+    const confirmPayload = {
+      address: addressToUse,
+      fid: farcasterUser.fid,
+    };
+
+    const confirm = async () =>
+      fetch('/api/signer/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(confirmPayload),
+      });
+
+    let confirmResponse = await confirm();
+
+    if (confirmResponse.ok) {
+      signerStatusCache.set(cacheKey, true);
+      return;
+    }
+
+    if (confirmResponse.status === 400) {
+      const requestResponse = await fetch('/api/signer/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: addressToUse }),
+      });
+
+      if (!requestResponse.ok) {
+        const body = await requestResponse.json().catch(() => null);
+        throw new Error(body?.message ?? 'Failed to prepare Farcaster signer.');
+      }
+
+      const requestBody = await requestResponse.json().catch(() => null);
+      if (requestBody?.deepLink) {
+        await sdk.actions.openUrl({ url: requestBody.deepLink });
+      }
+
+      confirmResponse = await confirm();
+      if (confirmResponse.ok) {
+        signerStatusCache.set(cacheKey, true);
+        return;
+      }
+    }
+
+    const errorBody = await confirmResponse.json().catch(() => null);
+    const errorMessage = errorBody?.message ?? 'Signer confirmation failed.';
+    throw new Error(errorMessage);
+  };
+
+
+  const handleShare = async () => {
+    if (isSharing || farcasterAuthLoading) return;
+
+    try {
+      let farcasterUser = farcasterAuthUser;
+
+      if (!isAuthenticated) {
+        farcasterUser = await login();
+        if (!farcasterUser) {
+          setTipFeedback({ type: 'error', message: 'Farcaster login required to share.' });
+          return;
+        }
+      }
+
+      if (!farcasterUser) {
+        setTipFeedback({ type: 'error', message: 'Farcaster session unavailable.' });
+        return;
+      }
+
+      setIsSharing(true);
+      setTipFeedback(null);
+
+      try {
+        await ensureSignerReady(farcasterUser);
+      } catch (signerError) {
+        const message = signerError instanceof Error ? signerError.message : 'Signer setup failed.';
+        setTipFeedback({ type: 'error', message });
+        return;
+      }
+
+      const response = await fetch('/api/farcaster/cast', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ recommendationId: recommendation.id }),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        const message = errorBody?.message ?? 'Share failed.';
+        throw new Error(message);
+      }
+
+      setTipFeedback({ type: 'success', message: 'Cast published to Farcaster.' });
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+      }
+      feedbackTimeoutRef.current = setTimeout(() => {
+        setTipFeedback(null);
+      }, 2500);
     } catch (error) {
       console.error('Share failed:', error);
-      setTipFeedback({ type: 'error', message: 'Share failed.' });
+      const message = error instanceof Error ? error.message : 'Share failed.';
+      setTipFeedback({ type: 'error', message });
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+      }
+      feedbackTimeoutRef.current = setTimeout(() => {
+        setTipFeedback(null);
+      }, 3000);
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -195,9 +327,10 @@ export function RecommendationCard({ recommendation, onCuratorClick }: Recommend
               <button
                 type="button"
                 onClick={handleShare}
-                className="btn-ghost px-3 py-1.5 text-xs"
+                className="btn-ghost px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isSharing}
               >
-                Share
+                {isSharing ? 'Sharing…' : 'Share'}
               </button>
             </div>
             <div className="flex items-center gap-2">

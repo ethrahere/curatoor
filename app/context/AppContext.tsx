@@ -43,12 +43,14 @@ interface FarcasterData {
 interface AppContextType {
   recommendations: Recommendation[];
   users: Map<string, User>;
-  addRecommendation: (recommendation: Omit<Recommendation, 'id' | 'timestamp' | 'tipCount'>) => Promise<void>;
+  addRecommendation: (recommendation: Omit<Recommendation, 'id' | 'timestamp' | 'tipCount' | 'frameUrl'>) => Promise<Recommendation>;
   tipRecommendation: (recommendationId: string, amount: number, tipperAddress: string) => Promise<boolean>;
   getUserOrCreate: (address: string, farcasterData?: FarcasterData) => Promise<User>;
   updateUser: (address: string, updates: Partial<User>) => Promise<void>;
   loading: boolean;
 }
+
+const APP_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://myapp.com';
 
 // Generate username from address
 function generateUsername(address: string): string {
@@ -74,6 +76,23 @@ function mapUserRow(row: UserRow): User {
     farcasterDisplayName: row.farcaster_display_name ?? undefined,
     farcasterFid: row.farcaster_fid ?? undefined,
     farcasterPfpUrl: row.farcaster_pfp_url ?? undefined,
+  };
+}
+
+function mapRecommendationRow(row: RecommendationRow): Recommendation {
+  return {
+    id: row.id,
+    curatorAddress: row.curator_address,
+    musicUrl: row.music_url,
+    songTitle: row.song_title,
+    artist: row.artist,
+    album: row.album ?? undefined,
+    review: row.review,
+    genre: row.genre,
+    moods: row.moods ?? [],
+    tipCount: row.tip_count ?? 0,
+    timestamp: new Date(row.created_at).getTime(),
+    frameUrl: `${APP_BASE_URL}/api/frame/${row.id}`,
   };
 }
 
@@ -111,19 +130,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
 
       const rows = (data ?? []) as RecommendationRow[];
-      const formattedRecs: Recommendation[] = rows.map((rec) => ({
-        id: rec.id,
-        curatorAddress: rec.curator_address,
-        musicUrl: rec.music_url,
-        songTitle: rec.song_title,
-        artist: rec.artist,
-        album: rec.album ?? undefined,
-        review: rec.review,
-        genre: rec.genre,
-        moods: rec.moods ?? [],
-        tipCount: rec.tip_count ?? 0,
-        timestamp: new Date(rec.created_at).getTime(),
-      }));
+      const formattedRecs: Recommendation[] = rows.map(mapRecommendationRow);
 
       setRecommendations(formattedRecs);
     } catch (error) {
@@ -255,9 +262,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addRecommendation = async (recommendation: Omit<Recommendation, 'id' | 'timestamp' | 'tipCount'>) => {
+  const addRecommendation = async (recommendation: Omit<Recommendation, 'id' | 'timestamp' | 'tipCount' | 'frameUrl'>) => {
     try {
-      const { error } = await supabase
+      const { data: insertedRow, error } = await supabase
         .from('recommendations')
         .insert({
           curator_address: recommendation.curatorAddress.toLowerCase(),
@@ -274,6 +281,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .single();
 
       if (error) throw error;
+      if (!insertedRow) throw new Error('Recommendation insert did not return a row.');
+
+      const formattedRecommendation = mapRecommendationRow(insertedRow as RecommendationRow);
 
       // Update user's recommendation count
       const user = await getUserOrCreate(recommendation.curatorAddress);
@@ -283,6 +293,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       // Refresh recommendations
       await fetchRecommendations();
+      return formattedRecommendation;
     } catch (error) {
       console.error('Error adding recommendation:', error);
       throw error;

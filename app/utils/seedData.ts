@@ -1,5 +1,9 @@
 import type { Recommendation } from '../types';
 
+const APP_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://myapp.com';
+
+const frameUrlFor = (id: string) => `${APP_BASE_URL}/api/frame/${id}`;
+
 export const seedRecommendations: Recommendation[] = [
   {
     id: '1',
@@ -13,6 +17,7 @@ export const seedRecommendations: Recommendation[] = [
     moods: ['Chill', 'Focus'],
     tipCount: 150,
     timestamp: Date.now() - 3600000,
+    frameUrl: frameUrlFor('1'),
   },
   {
     id: '2',
@@ -26,6 +31,7 @@ export const seedRecommendations: Recommendation[] = [
     moods: ['Energetic', 'Happy'],
     tipCount: 75,
     timestamp: Date.now() - 7200000,
+    frameUrl: frameUrlFor('2'),
   },
   {
     id: '3',
@@ -39,6 +45,7 @@ export const seedRecommendations: Recommendation[] = [
     moods: ['Melancholic'],
     tipCount: 200,
     timestamp: Date.now() - 10800000,
+    frameUrl: frameUrlFor('3'),
   },
   {
     id: '4',
@@ -52,6 +59,7 @@ export const seedRecommendations: Recommendation[] = [
     moods: ['Happy', 'Energetic'],
     tipCount: 125,
     timestamp: Date.now() - 14400000,
+    frameUrl: frameUrlFor('4'),
   },
   {
     id: '5',
@@ -65,5 +73,6 @@ export const seedRecommendations: Recommendation[] = [
     moods: ['Energetic'],
     tipCount: 90,
     timestamp: Date.now() - 18000000,
+    frameUrl: frameUrlFor('5'),
   },
 ];

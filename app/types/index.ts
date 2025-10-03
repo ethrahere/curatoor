@@ -10,6 +10,7 @@ export interface Recommendation {
   moods: string[];
   tipCount: number;
   timestamp: number;
+  frameUrl: string;
 }
 
 export interface User {

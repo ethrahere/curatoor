@@ -6,7 +6,7 @@ import { ConnectWallet } from '@coinbase/onchainkit/wallet';
 import { useApp } from '../context/AppContext';
 import { FarcasterAuthCard } from './FarcasterAuthCard';
 import { MOODS } from '../types';
-import type { Genre, Mood } from '../types';
+import type { Genre, Mood, Recommendation } from '../types';
 
 interface PostRecommendationModalProps {
   onClose: () => void;
@@ -20,8 +20,9 @@ export function PostRecommendationModal({ onClose }: PostRecommendationModalProp
   const [review, setReview] = useState('');
   const [selectedMoods, setSelectedMoods] = useState<Mood[]>([]);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [createdRecommendation, setCreatedRecommendation] = useState<Recommendation | null>(null);
   const [loading, setLoading] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
 
   const MAX_REVIEW_LENGTH = 280;
 
@@ -107,7 +108,7 @@ export function PostRecommendationModal({ onClose }: PostRecommendationModalProp
 
       const metadata = await fetchMusicMetadata(musicUrl.trim());
 
-      await addRecommendation({
+      const created = await addRecommendation({
         curatorAddress: address,
         musicUrl: musicUrl.trim(),
         songTitle: metadata.title,
@@ -118,11 +119,8 @@ export function PostRecommendationModal({ onClose }: PostRecommendationModalProp
         moods: selectedMoods,
       });
 
-      setSuccess(true);
-
-      setTimeout(() => {
-        onClose();
-      }, 1500);
+      setCreatedRecommendation(created);
+      setCopyFeedback(null);
     } catch (error) {
       console.error('Post recommendation error:', error);
       setError('Failed to post recommendation. Please try again.');
@@ -234,7 +232,18 @@ export function PostRecommendationModal({ onClose }: PostRecommendationModalProp
     );
   }
 
-  if (success) {
+  const handleCopyFrameUrl = async () => {
+    if (!createdRecommendation) return;
+    try {
+      await navigator.clipboard.writeText(createdRecommendation.frameUrl);
+      setCopyFeedback('Copied to clipboard.');
+    } catch (copyError) {
+      console.error('Failed to copy frame URL:', copyError);
+      setCopyFeedback('Copy failed.');
+    }
+  };
+
+  if (createdRecommendation) {
     return (
       <div className="fixed inset-0 backdrop-dream flex items-center justify-center z-50 p-4" onClick={onClose}>
         <div className="modal-surface max-w-md w-full" onClick={(e) => e.stopPropagation()}>
@@ -244,6 +253,30 @@ export function PostRecommendationModal({ onClose }: PostRecommendationModalProp
             <p className="text-sm text-ink-soft">
               Your recommendation is live for the community.
             </p>
+            <div className="mt-4 rounded-xl border border-[rgba(17,17,17,0.15)] bg-white/70 p-4 text-left">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-soft mb-2">
+                Share Frame URL
+              </p>
+              <p className="break-all text-sm text-ink mb-3">
+                {createdRecommendation.frameUrl}
+              </p>
+              <button
+                type="button"
+                onClick={handleCopyFrameUrl}
+                className="btn-pastel w-full text-sm"
+              >
+                Copy Frame Link
+              </button>
+              {copyFeedback && (
+                <p className="mt-2 text-xs text-ink-soft">{copyFeedback}</p>
+              )}
+            </div>
+            <button
+              onClick={onClose}
+              className="btn-ghost w-full"
+            >
+              Close
+            </button>
           </div>
         </div>
       </div>

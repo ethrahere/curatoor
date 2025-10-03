@@ -79,7 +79,7 @@ export function useFarcasterAuth(): UseFarcasterAuthReturn {
 
       const result = await signIn();
 
-      if (!result || result === false) {
+      if (!result) {
         throw new Error("Sign-in was cancelled or failed.");
       }
 
