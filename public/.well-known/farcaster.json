@@ -1,0 +1,23 @@
+{
+    "miniapp": {
+      "version": "1",
+      "name": "curio",
+      "iconUrl": "https://curio-eta-six.vercel.app/curio.png",
+      "homeUrl": "https://curio-eta-six.vercel.app/",
+      "imageUrl": "https://curio-eta-six.vercel.app/curio.png",
+      "splashImageUrl": "https://curio-eta-six.vercel.app/curio.png",
+      "splashBackgroundColor": "#b4e7c1",
+    "subtitle": "Rewarding curation",
+    "description": "Curate and earn rewards",
+    "primaryCategory": "social",
+    "tags": [
+      "music",
+      "earn"
+    ],
+    "heroImageUrl": "https://curio-eta-six.vercel.app/curio.png",
+    "tagline": "Rewarding curation",
+    "ogTitle": "Rewarding curation",
+    "ogDescription": "Curate and earn rewards",
+    "ogImageUrl": "https://curio-eta-six.vercel.app/curio.png"
+    }
+  }
