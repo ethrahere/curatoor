@@ -5,9 +5,9 @@ import { HomeFeed } from './components/HomeFeed';
 
 export default function App() {
   return (
-    <div className="flex flex-col min-h-screen font-sans bg-background text-foreground">
+    <div className="min-h-screen flex flex-col font-sans bg-background text-foreground">
       <NavBar />
-      <main className="flex-grow bg-content1">
+      <main className="flex-1 px-4 pb-16">
         <HomeFeed />
       </main>
     </div>

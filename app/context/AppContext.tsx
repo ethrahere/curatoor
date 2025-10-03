@@ -5,6 +5,34 @@ import type { Recommendation, User } from '../types';
 import { INITIAL_TOKEN_BALANCE } from '../types';
 import { supabase } from '../lib/supabase';
 
+type RecommendationRow = {
+  id: string;
+  curator_address: string;
+  music_url: string;
+  song_title: string;
+  artist: string;
+  album: string | null;
+  review: string;
+  genre: string;
+  moods: string[] | null;
+  tip_count: number;
+  created_at: string;
+};
+
+type UserRow = {
+  address: string;
+  username: string;
+  token_balance: number;
+  total_tips_received: number;
+  recommendation_count: number;
+  farcaster_username: string | null;
+  farcaster_display_name: string | null;
+  farcaster_fid: number | null;
+  farcaster_pfp_url: string | null;
+};
+
+type UserUpdateColumns = Partial<Pick<UserRow, 'token_balance' | 'total_tips_received' | 'recommendation_count'>>;
+
 interface FarcasterData {
   farcasterUsername?: string;
   farcasterDisplayName?: string;
@@ -33,6 +61,20 @@ function generateUsername(address: string): string {
   const number = parseInt(address.slice(4, 7), 16) % 1000;
 
   return `${adjectives[adjectiveIndex]}${nouns[nounIndex]}${number}`;
+}
+
+function mapUserRow(row: UserRow): User {
+  return {
+    address: row.address,
+    username: row.username,
+    tokenBalance: row.token_balance,
+    totalTipsReceived: row.total_tips_received,
+    recommendationCount: row.recommendation_count,
+    farcasterUsername: row.farcaster_username ?? undefined,
+    farcasterDisplayName: row.farcaster_display_name ?? undefined,
+    farcasterFid: row.farcaster_fid ?? undefined,
+    farcasterPfpUrl: row.farcaster_pfp_url ?? undefined,
+  };
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -68,17 +110,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error;
 
-      const formattedRecs: Recommendation[] = (data || []).map((rec: any) => ({
+      const rows = (data ?? []) as RecommendationRow[];
+      const formattedRecs: Recommendation[] = rows.map((rec) => ({
         id: rec.id,
         curatorAddress: rec.curator_address,
         musicUrl: rec.music_url,
         songTitle: rec.song_title,
         artist: rec.artist,
-        album: rec.album,
+        album: rec.album ?? undefined,
         review: rec.review,
         genre: rec.genre,
-        moods: rec.moods,
-        tipCount: rec.tip_count,
+        moods: rec.moods ?? [],
+        tipCount: rec.tip_count ?? 0,
         timestamp: new Date(rec.created_at).getTime(),
       }));
 
@@ -93,37 +136,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const getUserOrCreate = async (address: string, farcasterData?: FarcasterData): Promise<User> => {
     const normalizedAddress = address.toLowerCase();
 
-    // Check local cache first
     if (users.has(normalizedAddress)) {
       return users.get(normalizedAddress)!;
     }
 
     try {
-      // Check if user exists in database
-      const { data: existingUser, error: fetchError } = await supabase
+      const { data: existingUser, error } = await supabase
         .from('users')
         .select('*')
         .eq('address', normalizedAddress)
-        .single();
+        .maybeSingle();
 
-      if (existingUser) {
-        const user: User = {
-          address: existingUser.address,
-          username: existingUser.username,
-          tokenBalance: existingUser.token_balance,
-          totalTipsReceived: existingUser.total_tips_received,
-          recommendationCount: existingUser.recommendation_count,
-          farcasterUsername: existingUser.farcaster_username,
-          farcasterDisplayName: existingUser.farcaster_display_name,
-          farcasterFid: existingUser.farcaster_fid,
-          farcasterPfpUrl: existingUser.farcaster_pfp_url,
-        };
+      if (error) throw error;
 
-        // Update Farcaster data if provided and different
-        if (farcasterData && (
-          farcasterData.farcasterUsername !== user.farcasterUsername ||
-          farcasterData.farcasterFid !== user.farcasterFid
-        )) {
+      const userRow = existingUser as UserRow | null;
+
+      if (userRow) {
+        const user = mapUserRow(userRow);
+
+        if (
+          farcasterData &&
+          (
+            farcasterData.farcasterUsername !== user.farcasterUsername ||
+            farcasterData.farcasterFid !== user.farcasterFid ||
+            farcasterData.farcasterDisplayName !== user.farcasterDisplayName ||
+            farcasterData.farcasterPfpUrl !== user.farcasterPfpUrl
+          )
+        ) {
           await supabase
             .from('users')
             .update({
@@ -147,7 +186,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return user;
       }
 
-      // Create new user if doesn't exist
       const newUser: User = {
         address: normalizedAddress,
         username: generateUsername(normalizedAddress),
@@ -163,22 +201,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         token_balance: newUser.tokenBalance,
         total_tips_received: 0,
         recommendation_count: 0,
-        farcaster_username: farcasterData?.farcasterUsername,
-        farcaster_display_name: farcasterData?.farcasterDisplayName,
-        farcaster_fid: farcasterData?.farcasterFid,
-        farcaster_pfp_url: farcasterData?.farcasterPfpUrl,
+        farcaster_username: farcasterData?.farcasterUsername ?? null,
+        farcaster_display_name: farcasterData?.farcasterDisplayName ?? null,
+        farcaster_fid: farcasterData?.farcasterFid ?? null,
+        farcaster_pfp_url: farcasterData?.farcasterPfpUrl ?? null,
       });
 
       if (insertError) throw insertError;
 
-      const newUsers = new Map(users);
-      newUsers.set(normalizedAddress, newUser);
-      setUsers(newUsers);
+      const newUsersMap = new Map(users);
+      newUsersMap.set(normalizedAddress, newUser);
+      setUsers(newUsersMap);
 
       return newUser;
     } catch (error) {
       console.error('Error getting/creating user:', error);
-      // Return default user on error
       const defaultUser: User = {
         address: normalizedAddress,
         username: generateUsername(normalizedAddress),
@@ -195,19 +232,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const normalizedAddress = address.toLowerCase();
 
     try {
-      const dbUpdates: any = {};
+      const dbUpdates: UserUpdateColumns = {};
       if (updates.tokenBalance !== undefined) dbUpdates.token_balance = updates.tokenBalance;
       if (updates.totalTipsReceived !== undefined) dbUpdates.total_tips_received = updates.totalTipsReceived;
       if (updates.recommendationCount !== undefined) dbUpdates.recommendation_count = updates.recommendationCount;
 
-      const { error } = await supabase
-        .from('users')
-        .update(dbUpdates)
-        .eq('address', normalizedAddress);
+      if (Object.keys(dbUpdates).length > 0) {
+        const { error } = await supabase
+          .from('users')
+          .update(dbUpdates)
+          .eq('address', normalizedAddress);
 
-      if (error) throw error;
+        if (error) throw error;
+      }
 
-      // Update local cache
       const user = await getUserOrCreate(normalizedAddress);
       const newUsers = new Map(users);
       newUsers.set(normalizedAddress, { ...user, ...updates });
@@ -219,7 +257,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addRecommendation = async (recommendation: Omit<Recommendation, 'id' | 'timestamp' | 'tipCount'>) => {
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('recommendations')
         .insert({
           curator_address: recommendation.curatorAddress.toLowerCase(),

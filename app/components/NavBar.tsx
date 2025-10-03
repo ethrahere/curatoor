@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useAccount } from 'wagmi';
 import {
   Wallet,
@@ -30,47 +31,48 @@ export function NavBar() {
 
   return (
     <>
-      <header className="bg-content2 border-b border-content3 sticky top-0 z-40 backdrop-blur-md bg-opacity-80">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex justify-between items-center">
-            {/* Left: Profile Picture */}
-            <div className="flex items-center">
-              {isConnected && address ? (
-                <button
-                  onClick={() => setShowProfileModal(true)}
-                  className="flex items-center justify-center w-10 h-10 rounded-full overflow-hidden bg-primary/20 border-2 border-primary hover:bg-primary/30 transition-colors"
-                >
-                  {currentUser?.farcasterPfpUrl ? (
-                    <img
-                      src={currentUser.farcasterPfpUrl}
-                      alt={currentUser.farcasterUsername || 'Profile'}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Wallet>
-                      <Avatar className="h-8 w-8" />
-                    </Wallet>
-                  )}
-                </button>
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-content3 border-2 border-content4" />
-              )}
+      <header className="sticky top-0 z-40 pt-8 pb-4 bg-transparent backdrop-blur-sm">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="panel-surface">
+            <div className="panel-content flex items-center justify-between px-6 py-4">
+              <div className="flex items-center">
+                {isConnected && address ? (
+                  <button
+                    onClick={() => setShowProfileModal(true)}
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-[rgba(17,17,17,0.45)] bg-white/70 shadow-md transition-transform hover:-translate-y-0.5"
+                  >
+                    {currentUser?.farcasterPfpUrl ? (
+                      <Image
+                        src={currentUser.farcasterPfpUrl}
+                        alt={currentUser.farcasterUsername || 'Profile'}
+                        width={44}
+                        height={44}
+                        className="h-full w-full rounded-full object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <Wallet>
+                        <Avatar className="h-9 w-9" />
+                      </Wallet>
+                    )}
+                  </button>
+                ) : (
+                  <div className="h-11 w-11 rounded-full border border-[rgba(17,17,17,0.45)] bg-white/40 shadow-inner" />
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Image src="/curio.png" alt="Curatoor logo" width={102} height={32} className="h-6 w-auto" priority />
+              </div>
+
+              <button
+                onClick={() => setShowPostModal(true)}
+                className="btn-ghost px-6 py-2 text-sm"
+              >
+                Share
+              </button>
             </div>
-
-            {/* Center: App Name */}
-            <h1 className="absolute left-1/2 transform -translate-x-1/2 text-xl font-bold text-foreground">
-              Curatoor
-            </h1>
-
-            {/* Right: Share Button */}
-            <button
-              onClick={() => setShowPostModal(true)}
-              className="bg-primary hover:bg-primary-600 text-primary-foreground border-2 border-primary px-4 py-2 rounded-lg font-bold transition-all text-sm min-h-[40px] shadow-md hover:shadow-lg"
-            >
-              Share
-            </button>
           </div>
-
         </div>
       </header>
 

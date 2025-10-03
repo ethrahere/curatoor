@@ -11,19 +11,30 @@ export function HomeFeed() {
 
   return (
     <>
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold mb-6 text-foreground">
-          Music Recommendations
-        </h1>
-
-        {recommendations.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-foreground/60 mb-4">
-              No recommendations yet. Be the first to share!
+      <div className="max-w-5xl mx-auto space-y-6 pt-2">
+        <section className="panel-surface">
+          <div className="panel-content px-8 py-8">
+            <h1 className="text-3xl font-semibold text-ink mb-2 text-balance">
+              Music Recommendations
+            </h1>
+            <p className="text-sm text-ink-soft max-w-xl">
+              Dive into tracks curated by the community.
+              Share what you love or tip the tastemakers keeping the vibe alive.
             </p>
           </div>
+        </section>
+
+        {recommendations.length === 0 ? (
+          <div className="panel-surface">
+            <div className="panel-content px-8 py-12 text-center">
+              <p className="text-ink-soft mb-4">
+                No recommendations yet. Be the first to share!
+              </p>
+              <p className="text-xs uppercase tracking-[0.3em] text-ink">curate the vibe</p>
+            </div>
+          </div>
         ) : (
-          <div>
+          <div className="space-y-6">
             {recommendations.map((recommendation) => (
               <RecommendationCard
                 key={recommendation.id}

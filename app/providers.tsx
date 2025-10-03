@@ -14,9 +14,6 @@ export function Providers(props: { children: ReactNode }) {
         appearance: {
           mode: 'auto',
         },
-        minikit: {
-          enabled: true,
-        },
       }}
     >
       <AppProvider>

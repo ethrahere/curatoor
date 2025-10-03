@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useAccount } from 'wagmi';
 import { ConnectWallet } from '@coinbase/onchainkit/wallet';
 import { useApp } from '../context/AppContext';
-import { GENRES, MOODS } from '../types';
+import { MOODS } from '../types';
 import type { Genre, Mood } from '../types';
 
 interface PostRecommendationModalProps {
@@ -77,7 +77,6 @@ export function PostRecommendationModal({ onClose }: PostRecommendationModalProp
     // Fetch metadata from URL
     try {
       // First, ensure user exists in database
-      const { getUserOrCreate } = await import('../context/AppContext');
       const { supabase } = await import('../lib/supabase');
 
       // Check if user exists, create if not
@@ -212,21 +211,23 @@ export function PostRecommendationModal({ onClose }: PostRecommendationModalProp
 
   if (!isConnected || !address) {
     return (
-      <div className="fixed inset-0 bg-background flex items-center justify-center z-50 p-4" onClick={onClose}>
-        <div className="bg-content2 rounded-lg p-6 max-w-md w-full border border-content3 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-          <h2 className="text-xl font-bold mb-4 text-foreground">Connect Wallet to Share Music</h2>
-          <p className="text-foreground/70 mb-6">
-            You need to connect your wallet to share music recommendations.
-          </p>
-          <div className="flex justify-center mb-4">
-            <ConnectWallet />
+      <div className="fixed inset-0 backdrop-dream flex items-center justify-center z-50 p-4" onClick={onClose}>
+        <div className="modal-surface max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content px-8 py-10 space-y-6 text-center">
+            <h2 className="text-2xl font-semibold text-ink">Connect Wallet to Share Music</h2>
+            <p className="text-sm text-ink-soft">
+              You need to connect your wallet to share music recommendations.
+            </p>
+            <div className="flex justify-center">
+              <ConnectWallet />
+            </div>
+            <button
+              onClick={onClose}
+              className="btn-ghost w-full"
+            >
+              Close
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="w-full bg-content3 hover:bg-content4 text-foreground border-2 border-content4 hover:border-foreground/30 px-4 py-2 rounded-lg transition-all font-medium"
-          >
-            Cancel
-          </button>
         </div>
       </div>
     );
@@ -234,107 +235,123 @@ export function PostRecommendationModal({ onClose }: PostRecommendationModalProp
 
   if (success) {
     return (
-      <div className="fixed inset-0 bg-background flex items-center justify-center z-50 p-4" onClick={onClose}>
-        <div className="bg-content2 rounded-lg p-6 max-w-md w-full text-center border border-content3 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-          <div className="text-6xl mb-4">🎵</div>
-          <h2 className="text-2xl font-bold text-success mb-2">
-            Posted!
-          </h2>
-          <p className="text-foreground/70">
-            Your recommendation has been shared
-          </p>
+      <div className="fixed inset-0 backdrop-dream flex items-center justify-center z-50 p-4" onClick={onClose}>
+        <div className="modal-surface max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content px-8 py-10 text-center space-y-4">
+            <div className="text-5xl">🎵</div>
+            <h2 className="text-2xl font-semibold text-ink">Posted!</h2>
+            <p className="text-sm text-ink-soft">
+              Your recommendation is live for the community.
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-background flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-content2 rounded-lg p-6 max-w-md w-full my-8 border border-content3 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-xl font-bold mb-4 text-foreground">Share Music</h2>
+    <div
+      className="fixed inset-0 backdrop-dream flex items-center justify-center z-50 p-4 overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="modal-surface my-8 w-full max-w-md"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-content px-8 py-10">
+          <h2 className="mb-6 text-2xl font-semibold text-ink">Share Music</h2>
 
-        {error && (
-          <div className="mb-4 p-3 bg-danger/10 text-danger border border-danger/30 rounded-lg text-sm">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Music URL <span className="text-danger">*</span>
-            </label>
-            <input
-              type="url"
-              value={musicUrl}
-              onChange={(e) => setMusicUrl(e.target.value)}
-              placeholder="https://music.youtube.com/..."
-              className="w-full px-4 py-2 border-2 border-content4 rounded-lg bg-white text-black placeholder:text-gray-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              required
-            />
-            <p className="text-xs text-foreground/50 mt-1">
-              YouTube Music, Spotify, Apple Music, or SoundCloud
-            </p>
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Review/Context <span className="text-danger">*</span>
-            </label>
-            <textarea
-              value={review}
-              onChange={(e) => setReview(e.target.value)}
-              placeholder="Why do you love this track? (2-3 sentences)"
-              maxLength={MAX_REVIEW_LENGTH}
-              rows={4}
-              className="w-full px-4 py-2 border-2 border-content4 rounded-lg bg-white text-black placeholder:text-gray-500 resize-none focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              required
-            />
-            <p className="text-xs text-foreground/50 mt-1 text-right">
-              {review.length}/{MAX_REVIEW_LENGTH}
-            </p>
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Mood Tags (max 2)
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {MOODS.map((mood) => (
-                <button
-                  key={mood}
-                  type="button"
-                  onClick={() => toggleMood(mood)}
-                  className={`px-3 py-2 rounded-full text-sm font-medium transition-all border-2 ${
-                    selectedMoods.includes(mood)
-                      ? 'bg-primary border-primary text-primary-foreground shadow-lg scale-105'
-                      : 'bg-content3 border-content4 text-foreground hover:bg-content4 hover:border-primary/50'
-                  } ${selectedMoods.length >= 2 && !selectedMoods.includes(mood) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  disabled={selectedMoods.length >= 2 && !selectedMoods.includes(mood)}
-                >
-                  {mood}
-                </button>
-              ))}
+          {error && (
+            <div className="mb-6 rounded-2xl border border-[#ff8fad] bg-[#ffe6ef] px-4 py-3 text-sm text-ink">
+              {error}
             </div>
-          </div>
+          )}
 
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-content3 hover:bg-content4 text-foreground border-2 border-content4 hover:border-foreground/30 px-4 py-2 rounded-lg transition-all min-h-[44px] font-medium"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-primary hover:bg-primary-600 text-primary-foreground border-2 border-primary px-4 py-2 rounded-lg font-bold transition-all min-h-[44px] shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Posting...' : 'Post'}
-            </button>
-          </div>
-        </form>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-[0.25em] text-ink-soft">
+                Music URL <span className="text-ink">*</span>
+              </label>
+              <input
+                type="url"
+                value={musicUrl}
+                onChange={(e) => {
+                  setMusicUrl(e.target.value);
+                  setError('');
+                }}
+                placeholder="https://music.youtube.com/..."
+                className="input-shell mt-2"
+                required
+              />
+              <p className="mt-2 text-xs text-ink-soft">
+                YouTube Music, Spotify, Apple Music, or SoundCloud
+              </p>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-[0.25em] text-ink-soft">
+                Review / Context <span className="text-ink">*</span>
+              </label>
+              <textarea
+                value={review}
+                onChange={(e) => {
+                  setReview(e.target.value);
+                  setError('');
+                }}
+                placeholder="Why do you love this track? (2-3 sentences)"
+                maxLength={MAX_REVIEW_LENGTH}
+                rows={4}
+                className="input-shell mt-2 resize-none"
+                required
+              />
+              <p className="mt-2 text-right text-xs text-ink-soft">
+                {review.length}/{MAX_REVIEW_LENGTH}
+              </p>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-[0.25em] text-ink-soft">
+                Mood Tags (max 2)
+              </label>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {MOODS.map((mood) => {
+                  const selected = selectedMoods.includes(mood);
+                  const disabled = selectedMoods.length >= 2 && !selected;
+                  return (
+                    <button
+                      key={mood}
+                      type="button"
+                      onClick={() => toggleMood(mood)}
+                      disabled={disabled}
+                      className={`pill-tag transition-transform ${
+                        selected ? 'pill-tag--accent shadow-md scale-105' : 'hover:-translate-y-0.5 hover:shadow-md'
+                      } ${disabled ? 'cursor-not-allowed opacity-40' : ''}`}
+                    >
+                      {mood}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="btn-ghost flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-pastel flex-1 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? 'Posting…' : 'Post'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

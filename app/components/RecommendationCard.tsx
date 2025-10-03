@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import type { Recommendation } from '../types';
-import { TipModal } from './TipModal';
+import React, { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { useAccount } from 'wagmi';
+import type { Recommendation, User } from '../types';
 import { useApp } from '../context/AppContext';
+import { useDefaultTipAmount } from '../hooks/useDefaultTipAmount';
 
 interface RecommendationCardProps {
   recommendation: Recommendation;
@@ -12,32 +13,43 @@ interface RecommendationCardProps {
 }
 
 export function RecommendationCard({ recommendation, onCuratorClick }: RecommendationCardProps) {
-  const [showTipModal, setShowTipModal] = useState(false);
+  const { users, getUserOrCreate, tipRecommendation } = useApp();
+  const { defaultTipAmount } = useDefaultTipAmount();
   const { address, isConnected } = useAccount();
-  const { users, getUserOrCreate } = useApp();
-  const [curator, setCurator] = useState<any>(null);
+
+  const [curator, setCurator] = useState<User | null>(null);
+  const [isTipping, setIsTipping] = useState(false);
+  const [tipFeedback, setTipFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const fetchCurator = async () => {
       const normalizedAddress = recommendation.curatorAddress.toLowerCase();
 
-      // Check cache first
       if (users.has(normalizedAddress)) {
-        setCurator(users.get(normalizedAddress));
-      } else {
-        // Fetch from database
-        try {
-          const user = await getUserOrCreate(recommendation.curatorAddress);
-          setCurator(user);
-        } catch (error) {
-          console.error('Error fetching curator:', error);
-          setCurator({ username: 'Unknown User' });
-        }
+        setCurator(users.get(normalizedAddress) ?? null);
+        return;
+      }
+
+      try {
+        const user = await getUserOrCreate(recommendation.curatorAddress);
+        setCurator(user);
+      } catch (error) {
+        console.error('Error fetching curator:', error);
+        setCurator(null);
       }
     };
+
     fetchCurator();
   }, [recommendation.curatorAddress, users, getUserOrCreate]);
 
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const formatTimestamp = (timestamp: number) => {
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
@@ -51,95 +63,140 @@ export function RecommendationCard({ recommendation, onCuratorClick }: Recommend
     return 'Just now';
   };
 
-  const handleTipClick = () => {
-    setShowTipModal(true);
+  const handleTip = async () => {
+    if (!address || !isConnected) {
+      setTipFeedback({ type: 'error', message: 'Connect your wallet to tip.' });
+      return;
+    }
+
+    if (address.toLowerCase() === recommendation.curatorAddress.toLowerCase()) {
+      setTipFeedback({ type: 'error', message: "You can't tip your own recommendation." });
+      return;
+    }
+
+    const amount = Math.max(1, defaultTipAmount);
+
+    setIsTipping(true);
+    setTipFeedback(null);
+
+    const success = await tipRecommendation(recommendation.id, amount, address);
+
+    setIsTipping(false);
+
+    if (!success) {
+      setTipFeedback({ type: 'error', message: 'Insufficient token balance.' });
+      return;
+    }
+
+    setTipFeedback({
+      type: 'success',
+      message: `Tipped ${amount} token${amount === 1 ? '' : 's'}.`,
+    });
+
+    if (feedbackTimeoutRef.current) {
+      clearTimeout(feedbackTimeoutRef.current);
+    }
+    feedbackTimeoutRef.current = setTimeout(() => {
+      setTipFeedback(null);
+    }, 2500);
   };
 
+  const displayName = curator?.farcasterUsername
+    ? `@${curator.farcasterUsername}`
+    : curator?.username ?? 'Loading…';
+
   return (
-    <>
-      <div className="bg-content2 rounded-lg shadow-lg p-4 mb-4 hover:shadow-xl transition-all border border-content3 hover:border-primary/50">
-        <div className="flex justify-between items-start mb-3">
-          <div className="flex items-center gap-2">
-            {curator?.farcasterPfpUrl ? (
-              <img
-                src={curator.farcasterPfpUrl}
-                alt={curator.farcasterUsername || curator.username}
-                className="w-6 h-6 rounded-full"
-              />
-            ) : (
-              <div className="w-6 h-6 rounded-full bg-primary/20 border border-primary" />
-            )}
-            <button
-              onClick={() => onCuratorClick(recommendation.curatorAddress)}
-              className="text-primary hover:text-primary-600 font-medium text-sm transition-colors"
-            >
-              {curator?.farcasterUsername ? `@${curator.farcasterUsername}` : curator?.username || 'Loading...'}
-            </button>
+    <div className="panel-surface transition-transform hover:-translate-y-1">
+      <div className="panel-content px-8 py-7 space-y-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 overflow-hidden rounded-full border border-[rgba(17,17,17,0.35)] bg-white/70 shadow-inner">
+              {curator?.farcasterPfpUrl ? (
+                <Image
+                  src={curator.farcasterPfpUrl}
+                  alt={curator.farcasterUsername || curator?.username || 'Curator avatar'}
+                  width={36}
+                  height={36}
+                  className="h-full w-full object-cover"
+                  unoptimized
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-ink-soft">
+                  ♪
+                </div>
+              )}
+            </div>
+            <div>
+              <button
+                onClick={() => onCuratorClick(recommendation.curatorAddress)}
+                className="text-xs uppercase tracking-[0.25em] text-ink-soft transition-colors hover:text-ink"
+              >
+                {displayName}
+              </button>
+              <p className="mt-1 text-lg font-semibold text-ink">
+                {recommendation.songTitle}
+              </p>
+            </div>
           </div>
-          <span className="text-foreground/50 text-xs">
+          <span className="text-[0.65rem] uppercase tracking-[0.35em] text-ink-soft">
             {formatTimestamp(recommendation.timestamp)}
           </span>
         </div>
 
-        <div className="mb-3">
-          <h3 className="text-secondary text-base font-semibold mb-1">
-            {recommendation.songTitle}
-          </h3>
-          <p className="text-foreground/70 text-sm mb-2">
-            {recommendation.artist}{recommendation.album ? ` • ${recommendation.album}` : ''}
-          </p>
-          <a
-            href={recommendation.musicUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-secondary hover:bg-secondary-600 text-secondary-foreground px-4 py-2 rounded-lg text-sm font-bold transition-all border-2 border-secondary shadow-md hover:shadow-lg"
-          >
-            <span>Listen</span>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
-            </svg>
-          </a>
-        </div>
+        <p className="text-sm text-ink-soft">
+          {recommendation.artist}
+          {recommendation.album ? ` • ${recommendation.album}` : ''}
+        </p>
 
-        <p className="text-foreground mb-3 text-base leading-relaxed">
+        <p className="text-base leading-relaxed text-ink">
           {recommendation.review}
         </p>
 
-        <div className="flex flex-wrap gap-2 mb-3">
-          <span className="bg-secondary/20 text-secondary border border-secondary/30 px-3 py-1 rounded-full text-xs font-medium">
-            {recommendation.genre}
-          </span>
+        <div className="flex flex-wrap gap-2">
+          <span className="pill-tag pill-tag--accent">{recommendation.genre}</span>
           {recommendation.moods.map((mood) => (
-            <span
-              key={mood}
-              className="bg-primary/20 text-primary border border-primary/30 px-3 py-1 rounded-full text-xs"
-            >
+            <span key={mood} className="pill-tag">
               {mood}
             </span>
           ))}
         </div>
 
-        <div className="flex justify-between items-center pt-3 border-t border-content3">
-          <div className="flex items-center gap-2">
-            <span className="text-foreground/60 text-sm">
-              Tips: <span className="font-bold text-success">{recommendation.tipCount}</span>
-            </span>
+        <div className="flex flex-col gap-3 border-t border-[rgba(17,17,17,0.25)] pt-4">
+          <div className="flex items-center justify-between gap-3">
+            <a
+              href={recommendation.musicUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-ghost px-6 py-2 text-sm"
+            >
+              Listen
+            </a>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-ink-soft">
+                Tips
+                <span className="ml-2 font-bold text-ink">{recommendation.tipCount}</span>
+              </span>
+              <button
+                onClick={handleTip}
+                className="btn-pastel flex items-center gap-2 px-6 py-2 text-sm"
+                disabled={isTipping}
+              >
+                {isTipping ? 'Tipping…' : 'Tip'}
+              </button>
+            </div>
           </div>
-          <button
-            onClick={handleTipClick}
-            className="bg-warning hover:bg-warning-600 text-warning-foreground px-6 py-3 rounded-lg text-base font-bold transition-colors min-h-[48px] flex items-center gap-2 shadow-lg hover:shadow-xl"
-          >
-            Tip ⭐
-          </button>
+
+          {tipFeedback && (
+            <p
+              className={`text-xs font-medium ${
+                tipFeedback.type === 'error' ? 'text-[#d24b6a]' : 'text-[#1f7a5d]'
+              }`}
+            >
+              {tipFeedback.message}
+            </p>
+          )}
         </div>
       </div>
-
-      {showTipModal && (
-        <TipModal
-          recommendation={recommendation}
-          onClose={() => setShowTipModal(false)}
-        />
-      )}
-    </>
+    </div>
   );
 }
