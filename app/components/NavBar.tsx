@@ -31,7 +31,7 @@ export function NavBar() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 pt-8 pb-4 bg-transparent backdrop-blur-sm">
+      <header className="sticky top-0 z-40 pt-8 pb-4 bg-transparent">
         <div className="max-w-5xl mx-auto px-4">
           <div className="panel-surface">
             <div className="panel-content flex items-center justify-between px-6 py-4">

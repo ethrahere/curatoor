@@ -7,9 +7,9 @@
     "miniapp": {
       "version": "1",
       "name": "curio",
-      "iconUrl": "https://curio-eta-six.vercel.app/curio.png",
+      "iconUrl": "https://curio-eta-six.vercel.app/curio-logo.png",
       "homeUrl": "https://curio-eta-six.vercel.app/",
-      "imageUrl": "https://curio-eta-six.vercel.app/curio.png",
+      "imageUrl": "https://curio-eta-six.vercel.app/image-url.png",
       "splashImageUrl": "https://curio-eta-six.vercel.app/curio.png",
       "splashBackgroundColor": "#b4e7c1",
     "subtitle": "Rewarding curation",

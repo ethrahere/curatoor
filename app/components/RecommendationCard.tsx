@@ -122,52 +122,56 @@ export function RecommendationCard({ recommendation, onCuratorClick }: Recommend
 
   return (
     <div className="panel-surface transition-transform hover:-translate-y-1">
-      <div className="panel-content px-8 py-7 space-y-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 overflow-hidden rounded-full border border-[rgba(17,17,17,0.35)] bg-white/70 shadow-inner">
+      <div className="panel-content px-6 py-5 space-y-4">
+        {/* Header: Curator info and timestamp */}
+        <div className="flex items-center justify-between gap-3">
+          <button
+            onClick={() => onCuratorClick(recommendation.curatorAddress)}
+            className="flex items-center gap-2.5 transition-opacity hover:opacity-80"
+          >
+            <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-full border border-[rgba(17,17,17,0.35)] bg-white/70 shadow-inner">
               {curator?.farcasterPfpUrl ? (
                 <Image
                   src={curator.farcasterPfpUrl}
                   alt={curator.farcasterUsername || curator?.username || 'Curator avatar'}
-                  width={36}
-                  height={36}
+                  width={40}
+                  height={40}
                   className="h-full w-full object-cover"
                   unoptimized
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-ink-soft">
+                <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-ink-soft">
                   ♪
                 </div>
               )}
             </div>
-            <div>
-              <button
-                onClick={() => onCuratorClick(recommendation.curatorAddress)}
-                className="text-xs uppercase tracking-[0.25em] text-ink-soft transition-colors hover:text-ink"
-              >
-                {displayName}
-              </button>
-              <p className="mt-1 text-lg font-semibold text-ink">
-                {recommendation.songTitle}
-              </p>
-            </div>
-          </div>
-          <span className="text-[0.65rem] uppercase tracking-[0.35em] text-ink-soft">
+            <span className="text-xs uppercase tracking-[0.2em] text-ink-soft">
+              {displayName}
+            </span>
+          </button>
+          <span className="text-[0.65rem] uppercase tracking-[0.3em] text-ink-soft whitespace-nowrap">
             {formatTimestamp(recommendation.timestamp)}
           </span>
         </div>
 
-        <p className="text-sm text-ink-soft">
-          {recommendation.artist}
-          {recommendation.album ? ` • ${recommendation.album}` : ''}
-        </p>
+        {/* Song title and artist */}
+        <div className="space-y-1">
+          <h3 className="text-xl font-semibold text-ink leading-tight">
+            {recommendation.songTitle}
+          </h3>
+          <p className="text-sm text-ink-soft">
+            {recommendation.artist}
+            {recommendation.album ? ` • ${recommendation.album}` : ''}
+          </p>
+        </div>
 
-        <p className="text-base leading-relaxed text-ink">
+        {/* Review text */}
+        <p className="text-[0.9375rem] leading-relaxed text-ink">
           {recommendation.review}
         </p>
 
-        <div className="flex flex-wrap gap-2">
+        {/* Tags */}
+        <div className="flex flex-wrap gap-1.5">
           <span className="pill-tag pill-tag--accent">{recommendation.genre}</span>
           {recommendation.moods.map((mood) => (
             <span key={mood} className="pill-tag">
@@ -176,33 +180,33 @@ export function RecommendationCard({ recommendation, onCuratorClick }: Recommend
           ))}
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-[rgba(17,17,17,0.25)] pt-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+        {/* Actions bar */}
+        <div className="flex flex-col gap-2 border-t border-[rgba(17,17,17,0.2)] pt-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
               <a
                 href={recommendation.musicUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-ghost px-5 py-2 text-sm"
+                className="btn-ghost px-3 py-1.5 text-xs"
               >
                 Listen
               </a>
               <button
                 type="button"
                 onClick={handleShare}
-                className="btn-ghost px-5 py-2 text-sm"
+                className="btn-ghost px-3 py-1.5 text-xs"
               >
                 Share
               </button>
             </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-ink-soft">
-                Tips
-                <span className="ml-2 font-bold text-ink">{recommendation.tipCount}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-ink-soft">
+                <span className="font-semibold text-ink">{recommendation.tipCount}</span> tips
               </span>
               <button
                 onClick={handleTip}
-                className="btn-pastel flex items-center gap-2 px-6 py-2 text-sm"
+                className="btn-pastel flex items-center gap-2 px-3 py-1.5 text-xs"
                 disabled={isTipping}
               >
                 {isTipping ? 'Tipping…' : 'Tip'}

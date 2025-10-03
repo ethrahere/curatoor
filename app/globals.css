@@ -29,7 +29,7 @@
 }
 
 .dark {
-  --bg-dark: #0b1a12;
+  --bg-dark: #bffddc;
   --background: var(--bg-dark);
   --foreground: #f5fcf8;
 }

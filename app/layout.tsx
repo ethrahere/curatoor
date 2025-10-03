@@ -12,8 +12,25 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const embedData = {
+    version: "1",
+    imageUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://curio-eta-six.vercel.app'}/image-url.png`,
+    button: {
+      title: "🎵 Discover Music",
+      action: {
+        type: "launch_miniapp",
+        url: process.env.NEXT_PUBLIC_BASE_URL || 'https://curio-eta-six.vercel.app',
+        name: "Curio"
+      }
+    }
+  };
+
   return (
     <html lang="en" className="dark">
+      <head>
+        <meta name="fc:miniapp" content={JSON.stringify(embedData)} />
+        <meta name="fc:frame" content={JSON.stringify(embedData)} />
+      </head>
       <body className="bg-background text-foreground">
         <Providers>{children}</Providers>
       </body>
