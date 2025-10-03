@@ -15,6 +15,10 @@ export function Providers(props: { children: ReactNode }) {
           mode: 'auto',
         },
       }}
+      miniKit={{
+        enabled: true,
+        notificationProxyUrl: '/api/notify',
+      }}
     >
       <AppProvider>
         {props.children}
@@ -22,4 +26,3 @@ export function Providers(props: { children: ReactNode }) {
     </OnchainKitProvider>
   );
 }
-

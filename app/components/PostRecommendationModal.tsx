@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useAccount } from 'wagmi';
 import { ConnectWallet } from '@coinbase/onchainkit/wallet';
 import { useApp } from '../context/AppContext';
+import { FarcasterAuthCard } from './FarcasterAuthCard';
 import { MOODS } from '../types';
 import type { Genre, Mood } from '../types';
 
@@ -266,6 +267,10 @@ export function PostRecommendationModal({ onClose }: PostRecommendationModalProp
               {error}
             </div>
           )}
+
+          <div className="mb-6">
+            <FarcasterAuthCard />
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
